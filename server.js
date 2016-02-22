@@ -2,13 +2,28 @@
 
 const bodyParser = require('body-parser');
 const express = require('express');
+const session = require('express-session');
+const RedisStore = require('connect-redis')(session);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'secret';
 
 app.set('view engine', 'jade');
 
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(session({
+  secret: SESSION_SECRET,
+  store: new RedisStore()
+}));
+app.use((req, res, next) => {
+  req.session.visits = req.session.visits || {};
+  req.session.visits[req.url] = 'hello' //req.session.visits[req.url] || 0;
+  req.session.visits[req.url]++
+
+  console.log(req.session);
+  next();
+});
 
 app.get('/', (req, res) => {
   res.render('index');
@@ -27,7 +42,6 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-
   if (req.body.password === req.body.verify) {
     res.redirect('/login');
   } else {
@@ -36,7 +50,6 @@ app.post('/register', (req, res) => {
       message: 'Passwords do not match'
     });
   }
-
 });
 
 app.listen(PORT, () => {
