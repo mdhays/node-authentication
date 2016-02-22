@@ -2,8 +2,11 @@
 
 const bodyParser = require('body-parser');
 const express = require('express');
+const mongoose = require('mongoose');
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
+
+const userRoutes = require('./user/routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,42 +19,23 @@ app.use(session({
   secret: SESSION_SECRET,
   store: new RedisStore()
 }));
-app.use((req, res, next) => {
-  req.session.visits = req.session.visits || {};
-  req.session.visits[req.url] = 'hello' //req.session.visits[req.url] || 0;
-  req.session.visits[req.url]++
+app.use(userRoutes);
 
-  console.log(req.session);
+app.locals.title = '';
+
+app.use((req, res, next) => {
+  app.locals.user = req.session.user || { email: 'Guest' };
   next();
 });
-
+// index route
 app.get('/', (req, res) => {
   res.render('index');
 });
 
-app.get('/login', (req, res) => {
-  res.render('login');
-});
+mongoose.connect('mongodb://localhost:27017/nodeauth', (err) => {
+  if (err) throw err;
 
-app.post('/login', (req, res) => {
-  res.redirect('/');
-});
-
-app.get('/register', (req, res) => {
-  res.render('register');
-});
-
-app.post('/register', (req, res) => {
-  if (req.body.password === req.body.verify) {
-    res.redirect('/login');
-  } else {
-    res.render('register', {
-      email: req.body.email,
-      message: 'Passwords do not match'
-    });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`App listening on port ${PORT}`);
+  });
 });
